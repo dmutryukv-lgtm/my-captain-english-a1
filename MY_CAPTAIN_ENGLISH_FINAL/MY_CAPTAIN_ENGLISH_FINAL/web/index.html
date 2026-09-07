@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MY CAPTAIN ENGLISH A1</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><span class="anchor">⚓</span><div><b>MY CAPTAIN</b><span>ENGLISH A1</span></div></div>
+    <nav>
+      <button class="nav active" data-page="home">⌂ <span>Головна</span></button>
+      <button class="nav" data-page="lessons">▣ <span>Уроки</span></button>
+      <button class="nav" data-page="words">▤ <span>Слова</span></button>
+      <button class="nav" data-page="phrases">▣ <span>Фрази</span></button>
+      <button class="nav" data-page="grammar">▥ <span>Граматика</span></button>
+      <button class="nav" data-page="listening">◉ <span>Слухання</span></button>
+      <button class="nav" data-page="speaking">◌ <span>Говоріння</span></button>
+      <button class="nav" data-page="repeat">↻ <span>Повторення</span></button>
+      <button class="nav" data-page="progress">▥ <span>Прогрес</span></button>
+      <button class="nav" data-page="achievements">♜ <span>Досягнення</span></button>
+      <button class="nav" data-page="settings">⚙ <span>Налаштування</span></button>
+    </nav>
+    <div class="side-progress">
+      <div>Ваш прогрес</div><strong id="sidePercent">0%</strong>
+      <div class="ring"><span id="sideXP">0 XP</span></div>
+      <small id="sideLevel">A1 - Beginner</small>
+      <div class="streak">Серія: <span id="sideStreak">0</span> днів 🔥</div>
+    </div>
+  </aside>
+
+  <main>
+    <header>
+      <div><h1 id="pageTitle">Головна</h1><span class="badge">A1 — Початковий</span></div>
+      <div class="topstats"><span>🔥 <b id="topStreak">0</b> днів</span><span>⭐ <b id="topXP">0</b> XP</span><span class="captain">Капітан<br><small>Рівень A1</small> <i>K</i></span></div>
+    </header>
+
+    <section id="content" class="content"></section>
+  </main>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>
