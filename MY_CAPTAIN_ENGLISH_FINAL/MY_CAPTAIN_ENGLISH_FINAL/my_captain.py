@@ -7,145 +7,420 @@ import os
 from excel_manager import ExcelDB
 from learning_engine import LearningEngine
 
+
+# ============================================================
+# 1. ОСНОВНА ПАПКА ПРОЄКТУ
+# ============================================================
+
 BASE_DIR = Path(__file__).resolve().parent
+
+
+# ============================================================
+# 2. ПАПКА WEB
+# ============================================================
+
 WEB_DIR = BASE_DIR / "web"
-EXCEL_FILE = BASE_DIR.parent / "My_Captain_English_A1.xlsx"
+
+
+# ============================================================
+# 3. EXCEL
+# ============================================================
+# Excel знаходиться ПОРУЧ із my_captain.py
+#
+# MY_CAPTAIN_ENGLISH_FINAL/
+# ├── my_captain.py
+# ├── excel_manager.py
+# ├── learning_engine.py
+# ├── requirements.txt
+# ├── My_Captain_English_A1.xlsx
+# └── web/
+#
+# Тому використовуємо BASE_DIR, а НЕ BASE_DIR.parent
+# ============================================================
+
+EXCEL_FILE = BASE_DIR / "My_Captain_English_A1.xlsx"
+
+
+# ============================================================
+# 4. СЕРВЕР
+# ============================================================
+
 HOST = "0.0.0.0"
+
 PORT = int(os.environ.get("PORT", "10000"))
 
+
+# ============================================================
+# 5. ПЕРЕВІРКА ФАЙЛІВ
+# ============================================================
+
+print("=" * 60)
+print("MY CAPTAIN ENGLISH")
+print("=" * 60)
+
+print("BASE_DIR:", BASE_DIR)
+print("WEB_DIR:", WEB_DIR)
+print("EXCEL_FILE:", EXCEL_FILE)
+
+print("Excel exists:", EXCEL_FILE.exists())
+print("Web exists:", WEB_DIR.exists())
+
+if not EXCEL_FILE.exists():
+    raise FileNotFoundError(
+        f"Excel файл не знайдено: {EXCEL_FILE}"
+    )
+
+if not WEB_DIR.exists():
+    raise FileNotFoundError(
+        f"Папку web не знайдено: {WEB_DIR}"
+    )
+
+
+# ============================================================
+# 6. ПІДКЛЮЧЕННЯ EXCEL
+# ============================================================
+
 db = ExcelDB(EXCEL_FILE)
+
 engine = LearningEngine(db)
 
+
+# ============================================================
+# 7. HTTP HANDLER
+# ============================================================
+
 class Handler(SimpleHTTPRequestHandler):
+
+    # --------------------------------------------------------
+    # JSON ВІДПОВІДЬ
+    # --------------------------------------------------------
+
     def _send_json(self, data, status=200):
-        body = json.dumps(data, ensure_ascii=False).encode("utf-8")
+
+        body = json.dumps(
+            data,
+            ensure_ascii=False
+        ).encode("utf-8")
+
         self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
+
+        self.send_header(
+            "Content-Type",
+            "application/json; charset=utf-8"
+        )
+
+        self.send_header(
+            "Content-Length",
+            str(len(body))
+        )
+
+        self.send_header(
+            "Cache-Control",
+            "no-store"
+        )
+
         self.end_headers()
+
         self.wfile.write(body)
 
-    def _send_file(self, path):
-        try:
-            data = Path(path).read_bytes()
-        except FileNotFoundError:
-            self.send_error(404)
-            return
-        content_type = "text/html; charset=utf-8"
-        if str(path).endswith(".css"):
-            content_type = "text/css; charset=utf-8"
-        elif str(path).endswith(".js"):
-            content_type = "application/javascript; charset=utf-8"
-        self.send_response(200)
-        self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(len(data)))
-        self.end_headers()
-        self.wfile.write(data)
+    # --------------------------------------------------------
+    # GET
+    # --------------------------------------------------------
 
     def do_GET(self):
-        path = urlparse(self.path).path.rstrip("/") or "/"
 
-        try:
-            if path == "/api/health":
-                self._send_json({
+        parsed = urlparse(self.path)
+
+        path = parsed.path
+
+        # ----------------------------------------------------
+        # ГОЛОВНА СТОРІНКА
+        # ----------------------------------------------------
+
+        if path == "/":
+
+            self.path = "/index.html"
+
+            return super().do_GET()
+
+        # ----------------------------------------------------
+        # API DASHBOARD
+        # ----------------------------------------------------
+
+        if path == "/api/dashboard":
+
+            try:
+
+                result = engine.dashboard()
+
+                return self._send_json({
                     "ok": True,
-                    "app": "MY CAPTAIN ENGLISH",
-                    "excel": str(EXCEL_FILE),
-                    "excel_exists": EXCEL_FILE.exists()
+                    "data": result
                 })
-                return
 
-            if path == "/api/dashboard":
-                self._send_json(engine.dashboard())
-                return
+            except Exception as e:
 
-            if path == "/api/lessons":
-                self._send_json(engine.lessons())
-                return
+                return self._send_json({
+                    "ok": False,
+                    "error": str(e)
+                }, 500)
 
-            if path.startswith("/api/lesson/"):
-                lesson_id = path.split("/")[-1]
-                self._send_json(engine.lesson(lesson_id))
-                return
+        # ----------------------------------------------------
+        # API LESSONS
+        # ----------------------------------------------------
 
-            if path == "/api/words":
-                self._send_json(engine.words())
-                return
+        if path == "/api/lessons":
 
-            if path == "/api/phrases":
-                self._send_json(engine.phrases())
-                return
+            try:
 
-            if path == "/api/grammar":
-                self._send_json(engine.grammar())
-                return
+                result = engine.lessons()
 
-            if path == "/api/listening":
-                self._send_json(engine.listening())
-                return
+                return self._send_json({
+                    "ok": True,
+                    "data": result
+                })
 
-            if path == "/api/speaking":
-                self._send_json(engine.speaking())
-                return
+            except Exception as e:
 
-            if path == "/api/achievements":
-                self._send_json(engine.achievements())
-                return
+                return self._send_json({
+                    "ok": False,
+                    "error": str(e)
+                }, 500)
 
-            if path == "/api/settings":
-                self._send_json(engine.settings())
-                return
+        # ----------------------------------------------------
+        # API WORDS
+        # ----------------------------------------------------
 
-            if path == "/":
-                path = "/index.html"
+        if path == "/api/words":
 
-            safe = (WEB_DIR / path.lstrip("/")).resolve()
-            if WEB_DIR.resolve() not in safe.parents and safe != WEB_DIR.resolve():
-                self.send_error(403)
-                return
-            self._send_file(safe)
+            try:
 
-        except Exception as e:
-            self._send_json({"ok": False, "error": str(e)}, 500)
+                result = engine.words()
 
-    def do_POST(self):
-        path = urlparse(self.path).path
-        if not path.startswith("/api/"):
-            self.send_error(404)
-            return
+                return self._send_json({
+                    "ok": True,
+                    "data": result
+                })
+
+            except Exception as e:
+
+                return self._send_json({
+                    "ok": False,
+                    "error": str(e)
+                }, 500)
+
+        # ----------------------------------------------------
+        # API PHRASES
+        # ----------------------------------------------------
+
+        if path == "/api/phrases":
+
+            try:
+
+                result = engine.phrases()
+
+                return self._send_json({
+                    "ok": True,
+                    "data": result
+                })
+
+            except Exception as e:
+
+                return self._send_json({
+                    "ok": False,
+                    "error": str(e)
+                }, 500)
+
+        # ----------------------------------------------------
+        # API GRAMMAR
+        # ----------------------------------------------------
+
+        if path == "/api/grammar":
+
+            try:
+
+                result = engine.grammar()
+
+                return self._send_json({
+                    "ok": True,
+                    "data": result
+                })
+
+            except Exception as e:
+
+                return self._send_json({
+                    "ok": False,
+                    "error": str(e)
+                }, 500)
+
+        # ----------------------------------------------------
+        # API LISTENING
+        # ----------------------------------------------------
+
+        if path == "/api/listening":
+
+            try:
+
+                result = engine.listening()
+
+                return self._send_json({
+                    "ok": True,
+                    "data": result
+                })
+
+            except Exception as e:
+
+                return self._send_json({
+                    "ok": False,
+                    "error": str(e)
+                }, 500)
+
+        # ----------------------------------------------------
+        # API SPEAKING
+        # ----------------------------------------------------
+
+        if path == "/api/speaking":
+
+            try:
+
+                result = engine.speaking()
+
+                return self._send_json({
+                    "ok": True,
+                    "data": result
+                })
+
+            except Exception as e:
+
+                return self._send_json({
+                    "ok": False,
+                    "error": str(e)
+                }, 500)
+
+        # ----------------------------------------------------
+        # API ACHIEVEMENTS
+        # ----------------------------------------------------
+
+        if path == "/api/achievements":
+
+            try:
+
+                result = engine.achievements()
+
+                return self._send_json({
+                    "ok": True,
+                    "data": result
+                })
+
+            except Exception as e:
+
+                return self._send_json({
+                    "ok": False,
+                    "error": str(e)
+                }, 500)
+
+        # ----------------------------------------------------
+        # API SETTINGS
+        # ----------------------------------------------------
+
+        if path == "/api/settings":
+
+            try:
+
+                result = engine.settings()
+
+                return self._send_json({
+                    "ok": True,
+                    "data": result
+                })
+
+            except Exception as e:
+
+                return self._send_json({
+                    "ok": False,
+                    "error": str(e)
+                }, 500)
+
+        # ----------------------------------------------------
+        # ВСІ ІНШІ ЗАПИТИ
+        # ----------------------------------------------------
 
         try:
-            length = int(self.headers.get("Content-Length", "0"))
-            raw = self.rfile.read(length) if length else b"{}"
-            data = json.loads(raw.decode("utf-8") or "{}")
 
-            if path == "/api/activity":
-                result = engine.record_activity(data)
-                self._send_json(result)
-                return
+            self.directory = str(WEB_DIR)
 
-            if path == "/api/word-result":
-                result = engine.record_word_result(data)
-                self._send_json(result)
-                return
+            if path.startswith("/web/"):
 
-            self.send_error(404)
+                self.path = path[4:]
+
+            return super().do_GET()
 
         except Exception as e:
-            self._send_json({"ok": False, "error": str(e)}, 500)
 
-    def log_message(self, fmt, *args):
-        print("[WEB]", fmt % args)
+            return self._send_json({
+                "ok": False,
+                "error": str(e)
+            }, 500)
 
-if __name__ == "__main__":
-    print("======================================")
-    print(" MY CAPTAIN ENGLISH")
-    print("======================================")
+    # --------------------------------------------------------
+    # ЛОГУВАННЯ
+    # --------------------------------------------------------
+
+    def log_message(self, format, *args):
+
+        print(
+            "[WEB]",
+            format % args
+        )
+
+
+# ============================================================
+# 8. ЗАПУСК СЕРВЕРА
+# ============================================================
+
+def main():
+
+    print()
+    print("=" * 60)
+    print("MY CAPTAIN ENGLISH SERVER")
+    print("=" * 60)
+
+    print("Host:", HOST)
+    print("Port:", PORT)
     print("Excel:", EXCEL_FILE)
     print("Excel exists:", EXCEL_FILE.exists())
-    print(f"Web: http://127.0.0.1:{PORT}")
-    print("Stop: CTRL+C")
-    print("======================================")
-    server = ThreadingHTTPServer((HOST, PORT), Handler)
-    server.serve_forever()
+    print("Web:", WEB_DIR)
+
+    print()
+    print(
+        f"Server running on http://{HOST}:{PORT}"
+    )
+
+    print("=" * 60)
+
+    server = ThreadingHTTPServer(
+        (HOST, PORT),
+        Handler
+    )
+
+    try:
+
+        server.serve_forever()
+
+    except KeyboardInterrupt:
+
+        print()
+        print("Server stopped.")
+
+    finally:
+
+        server.server_close()
+
+
+# ============================================================
+# 9. START
+# ============================================================
+
+if __name__ == "__main__":
+
+    main()
